@@ -1,55 +1,87 @@
-import React, { useState } from 'react';
-import './rag.css';
+import React, { useState } from "react";
+import "./rag.css";
 
-function RagDemoPage() {
-  const [query, setQuery] = useState('');
-  const [response, setResponse] = useState('');
+const RagDemoPage = () => {
   const [file, setFile] = useState(null);
+  const [query, setQuery] = useState("");
+  const [messages, setMessages] = useState([]);
 
-  const uploadFile = async () => {
-    if (!file) return;
-    const formData = new FormData();
-    formData.append('document', file);
-
-    await fetch('http://localhost:8000/upload', {
-      method: 'POST',
-      body: formData,
-    });
+  const handleFileChange = (e) => {
+    setFile(e.target.files[0]);
   };
 
-  const handleQuery = async () => {
-    const res = await fetch('http://localhost:8000/rag-query', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+  const handleUpload = async () => {
+    if (!file) return alert("Please choose a file first.");
+    const formData = new FormData();
+    formData.append("file", file);
+
+    await fetch("https://ai-demo-zzgy.onrender.com/api/upload", {
+      method: "POST",
+      body: formData,
+    });
+
+    alert("Document uploaded successfully!");
+  };
+
+  const handleAsk = async () => {
+    if (!query) return;
+    const userMsg = { sender: "user", text: query };
+    setMessages((prev) => [...prev, userMsg]);
+
+    const response = await fetch("https://ai-demo-zzgy.onrender.com/api/askdoc", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ query }),
     });
-    const data = await res.json();
-    setResponse(data.answer);
+
+    console.log(response)
+
+    const data = await response.json();
+    const botMsg = { sender: "bot", text: data.response };
+    setMessages((prev) => [...prev, botMsg]);
+    setQuery("");
   };
 
   return (
-    <div className="rag-container">
-      <h2>RAG Demo</h2>
-      <input type="file" onChange={(e) => setFile(e.target.files[0])} />
-      <button onClick={uploadFile}>Upload Document</button>
+    <div className="rag-demo-container">
+      <div className="rag-content">
+        <h2 className="rag-title">RAG Demo</h2>
 
-      <div className="query-section">
-        <input 
-          value={query} 
-          onChange={(e) => setQuery(e.target.value)} 
-          placeholder="Ask something about your documents..."
-        />
-        <button onClick={handleQuery}>Ask</button>
-      </div>
-
-      {response && (
-        <div className="rag-response">
-          <h4>Answer:</h4>
-          <p>{response}</p>
+        <div className="upload-section">
+          <input type="file" onChange={handleFileChange} className="file-input" />
+          <button onClick={handleUpload} className="upload-btn">
+            Upload Document
+          </button>
         </div>
-      )}
+
+        <div className="chat-window">
+          <div className="chat-messages">
+            {messages.map((msg, idx) => (
+              <div
+                key={idx}
+                className={`message ${msg.sender === "user" ? "user-msg" : "bot-msg"}`}
+              >
+                {msg.text}
+              </div>
+            ))}
+          </div>
+
+          <div className="input-section">
+            <input
+              type="text"
+              placeholder="Ask something about your documents..."
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              className="query-input"
+            />
+            <button onClick={handleAsk} className="ask-btn">
+              Ask
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
-}
+};
 
 export default RagDemoPage;
